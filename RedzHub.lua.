@@ -1,0 +1,120 @@
+-- RedzHub.lua - Script Blox Fruits
+print("🚀 RedzHub carregado!")
+
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+
+-- Criar interface
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 300, 0, 200)
+Frame.Position = UDim2.new(0.5, -150, 0.5, -100)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Text = "🚀 RedzHub v1.0"
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.BackgroundColor3 = Color3.fromRGB(70, 0, 130)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 20
+Title.Parent = Frame
+
+local CloseButton = Instance.new("TextButton")
+CloseButton.Text = "X"
+CloseButton.Size = UDim2.new(0, 40, 0, 40)
+CloseButton.Position = UDim2.new(1, -40, 0, 0)
+CloseButton.BackgroundColor3 = Color3.fromRGB(220, 20, 60)
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.TextSize = 18
+CloseButton.Parent = Frame
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- Botão de Farm
+local FarmButton = Instance.new("TextButton")
+FarmButton.Text = "⚔️ Auto Farm"
+FarmButton.Size = UDim2.new(0.8, 0, 0, 40)
+FarmButton.Position = UDim2.new(0.1, 0, 0.3, 0)
+FarmButton.BackgroundColor3 = Color3.fromRGB(0, 100, 0)
+FarmButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+FarmButton.Font = Enum.Font.Gotham
+FarmButton.TextSize = 16
+FarmButton.Parent = Frame
+
+local farming = false
+FarmButton.MouseButton1Click:Connect(function()
+    farming = not farming
+    FarmButton.Text = farming and "⚔️ Farming..." or "⚔️ Auto Farm"
+    FarmButton.BackgroundColor3 = farming and Color3.fromRGB(100, 0, 0) or Color3.fromRGB(0, 100, 0)
+    
+    if farming then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "RedzHub",
+            Text = "Auto Farm ativado!",
+            Duration = 3
+        })
+    end
+end)
+
+-- Botão de Speed
+local SpeedButton = Instance.new("TextButton")
+SpeedButton.Text = "🚀 Speed Hack"
+SpeedButton.Size = UDim2.new(0.8, 0, 0, 40)
+SpeedButton.Position = UDim2.new(0.1, 0, 0.6, 0)
+SpeedButton.BackgroundColor3 = Color3.fromRGB(0, 0, 100)
+SpeedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedButton.Font = Enum.Font.Gotham
+SpeedButton.TextSize = 16
+SpeedButton.Parent = Frame
+
+local speeding = false
+SpeedButton.MouseButton1Click:Connect(function()
+    speeding = not speeding
+    SpeedButton.Text = speeding and "🚀 Speed: ON" or "🚀 Speed Hack"
+    
+    if speeding and Character:FindFirstChild("Humanoid") then
+        Character.Humanoid.WalkSpeed = 100
+    elseif Character:FindFirstChild("Humanoid") then
+        Character.Humanoid.WalkSpeed = 16
+    end
+end)
+
+-- Informação
+local InfoText = Instance.new("TextLabel")
+InfoText.Text = "Pressione F9 para esconder"
+InfoText.Size = UDim2.new(1, 0, 0, 30)
+InfoText.Position = UDim2.new(0, 0, 1, -30)
+InfoText.BackgroundTransparency = 1
+InfoText.TextColor3 = Color3.fromRGB(200, 200, 200)
+InfoText.Font = Enum.Font.Gotham
+InfoText.TextSize = 14
+InfoText.Parent = Frame
+
+-- Keybind para esconder
+local UIS = game:GetService("UserInputService")
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.F9 then
+        Frame.Visible = not Frame.Visible
+    end
+end)
+
+-- Notificação inicial
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "🚀 RedzHub",
+    Text = "Bem-vindo " .. Player.Name .. "!\nScript carregado!",
+    Duration = 5
+})
+
+print("========================================")
+print("RedzHub - Blox Fruits")
+print("Player: " .. Player.Name)
+print("========================================")
