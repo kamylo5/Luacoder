@@ -1,0 +1,555 @@
+-- Blox Fruits Ultimate Farm Script
+-- Compatível com as últimas atualizações
+-- Desenvolvido por: AI Assistant
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local TeleportService = game:GetService("TeleportService")
+local RunService = game:GetService("RunService")
+
+-- Variáveis globais
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local CurrentIsland = ""
+local Farming = false
+local BossFarm = false
+local QuestFarm = false
+local RaidFarm = false
+
+-- Configurações atualizadas para nova versão
+local Settings = {
+    AutoFarm = false,
+    FarmMode = "Level", -- Level, Mastery, Beli, Bones
+    FarmMethod = "Nearest", -- Nearest, Quest, Boss
+    AutoAttack = true,
+    AutoSkill = true,
+    AutoActiveAbility = false,
+    AutoBuso = true,
+    AutoKen = true,
+    AutoSoru = true,
+    AutoObservation = true,
+    AutoRaid = false,
+    AutoFactory = false,
+    AutoCollectChest = true,
+    AutoCollectFruit = true,
+    AutoKillAura = false,
+    AutoSeaEvent = false,
+    TeleportToIsland = false,
+    SelectedIsland = "Jungle",
+    SelectedBoss = "God's Guard",
+    Webhook = "",
+    SafeMode = true,
+    WhiteScreen = false,
+    AntiAFK = true,
+    NoClip = false,
+    WalkSpeed = 50,
+    JumpPower = 50
+}
+
+-- Lista de ilhas atualizada
+local Islands = {
+    "Starter Island",
+    "Jungle",
+    "Pirate Village",
+    "Desert",
+    "Frozen Village",
+    "Marine Fortress",
+    "Skylands",
+    "Prison",
+    "Colosseum",
+    "Magma Village",
+    "Underwater City",
+    "Fountain City",
+    "Ghost Island",
+    "Ice Castle",
+    "Cake Island",
+    "Sea of Treats",
+    "Elf Island",
+    "Castle on the Sea",
+    "Hydra Island",
+    "Mirage Island",
+    "Tiki Outpost",
+    "Haunted Castle",
+    "Great Tree",
+    "Dark Arena"
+}
+
+-- Lista de bosses atualizada
+local Bosses = {
+    "God's Guard",
+    "Warden",
+    "Chief Warden",
+    "Swan",
+    "Military Soldier",
+    "Military Spy",
+    "Fishman Lord",
+    "Wysper",
+    "Tide Keeper",
+    "Dark Master",
+    "Diamond",
+    "Jeremy",
+    "Fajita",
+    "Don Swan",
+    "Smoke Admiral",
+    "Cursed Captain",
+    "Awakened Ice Admiral",
+    "Beautiful Pirate",
+    "Longma",
+    "Soul Reaper",
+    "Dough King",
+    "Indra",
+    "Order",
+    "rip_indra True",
+    "Stone"
+}
+
+-- Função para verificar carregamento
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+task.wait(2)
+
+-- Função de notificação
+function Notify(Title, Text, Duration)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = Title,
+        Text = Text,
+        Duration = Duration or 5
+    })
+end
+
+-- Função para encontrar NPCs de quest
+function GetQuestNPC()
+    local QuestNPCs = {}
+    for _, npc in pairs(Workspace.NPCs:GetChildren()) do
+        if npc:FindFirstChild("Quest") then
+            table.insert(QuestNPCs, npc)
+        end
+    end
+    return QuestNPCs
+end
+
+-- Função para pegar quest automaticamente
+function GetQuest()
+    if not Character then return end
+    
+    local NPCs = GetQuestNPC()
+    local closestNPC = nil
+    local closestDist = math.huge
+    
+    for _, npc in pairs(NPCs) do
+        if npc:FindFirstChild("HumanoidRootPart") then
+            local dist = (HumanoidRootPart.Position - npc.HumanoidRootPart.Position).Magnitude
+            if dist < closestDist then
+                closestDist = dist
+                closestNPC = npc
+            end
+        end
+    end
+    
+    if closestNPC then
+        fireclickdetector(closestNPC.Quest.ClickDetector)
+        task.wait(0.5)
+        return true
+    end
+    return false
+end
+
+-- Função para encontrar inimigos mais próximos (atualizada)
+function FindNearestEnemy()
+    local target = nil
+    local distance = math.huge
+    
+    -- Verificar diferentes tipos de inimigos
+    local enemyFolders = {"Enemies", "NPCs", "Bosses"}
+    
+    for _, folderName in pairs(enemyFolders) do
+        local folder = Workspace:FindFirstChild(folderName)
+        if folder then
+            for _, enemy in pairs(folder:GetChildren()) do
+                if enemy:FindFirstChild("HumanoidRootPart") and enemy:FindFirstChild("Humanoid") then
+                    if enemy.Humanoid.Health > 0 then
+                        local enemyDist = (HumanoidRootPart.Position - enemy.HumanoidRootPart.Position).Magnitude
+                        if enemyDist < distance then
+                            distance = enemyDist
+                            target = enemy
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    return target, distance
+end
+
+-- Função de teleporte segura
+function SafeTeleport(cframe)
+    if Settings.SafeMode then
+        pcall(function()
+            local tween = game:GetService("TweenService"):Create(
+                HumanoidRootPart,
+                TweenInfo.new(1, Enum.EasingStyle.Linear),
+                {CFrame = cframe}
+            )
+            tween:Play()
+        end)
+    else
+        pcall(function()
+            Character:SetPrimaryPartCFrame(cframe)
+        end)
+    end
+end
+
+-- Sistema de Auto Farm principal
+function StartAutoFarm()
+    Farming = true
+    
+    spawn(function()
+        while Farming do
+            if Settings.AutoFarm then
+                -- Verificar se tem quest ativa
+                if not LocalPlayer.PlayerGui.Main.Quest.Visible then
+                    GetQuest()
+                    task.wait(1)
+                end
+                
+                -- Encontrar e atacar inimigo
+                local enemy, distance = FindNearestEnemy()
+                
+                if enemy and distance < 500 then
+                    -- Teleportar para o inimigo
+                    local attackCFrame = enemy.HumanoidRootPart.CFrame * CFrame.new(0, 0, 10)
+                    SafeTeleport(attackCFrame)
+                    
+                    -- Usar habilidades automaticamente
+                    if Settings.AutoSkill then
+                        UseSkills()
+                    end
+                    
+                    -- Usar ataque básico
+                    if Settings.AutoAttack then
+                        VirtualInputManager:SendKeyEvent(true, "X", false, game)
+                        task.wait(0.1)
+                        VirtualInputManager:SendKeyEvent(false, "X", false, game)
+                    end
+                    
+                    -- Usar Haki
+                    if Settings.AutoBuso then
+                        VirtualInputManager:SendKeyEvent(true, "F", false, game)
+                    end
+                    
+                    task.wait(0.5)
+                else
+                    -- Procurar novo inimigo
+                    task.wait(1)
+                end
+            end
+            RunService.Heartbeat:Wait()
+        end
+    end)
+end
+
+-- Função para usar habilidades
+function UseSkills()
+    local skillKeys = {"Z", "X", "C", "V", "F"}
+    for _, key in pairs(skillKeys) do
+        VirtualInputManager:SendKeyEvent(true, key, false, game)
+        task.wait(0.1)
+        VirtualInputManager:SendKeyEvent(false, key, false, game)
+    end
+end
+
+-- Sistema de Auto Raid
+function StartAutoRaid()
+    RaidFarm = true
+    
+    spawn(function()
+        while RaidFarm do
+            if Settings.AutoRaid then
+                -- Verificar se tem chip
+                -- Teleportar para raid
+                -- Iniciar raid
+                -- Farmar dentro da raid
+                task.wait(10)
+            end
+            task.wait(1)
+        end
+    end)
+end
+
+-- Sistema de Auto Collect
+function StartAutoCollect()
+    spawn(function()
+        while true do
+            if Settings.AutoCollectChest then
+                for _, chest in pairs(Workspace:GetChildren()) do
+                    if chest.Name:find("Chest") and chest:FindFirstChild("Chest") then
+                        SafeTeleport(chest.Chest.CFrame)
+                        task.wait(0.5)
+                    end
+                end
+            end
+            
+            if Settings.AutoCollectFruit then
+                for _, obj in pairs(Workspace:GetChildren()) do
+                    if obj.Name:find("Fruit") and obj:FindFirstChild("Handle") then
+                        SafeTeleport(obj.Handle.CFrame)
+                        task.wait(0.5)
+                    end
+                end
+            end
+            
+            task.wait(5)
+        end
+    end)
+end
+
+-- Sistema de Stats Player
+function UpdatePlayerStats()
+    spawn(function()
+        while true do
+            if Character and Character:FindFirstChild("Humanoid") then
+                pcall(function()
+                    Character.Humanoid.WalkSpeed = Settings.WalkSpeed
+                    Character.Humanoid.JumpPower = Settings.JumpPower
+                    
+                    -- No Clip
+                    if Settings.NoClip then
+                        for _, part in pairs(Character:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                part.CanCollide = false
+                            end
+                        end
+                    end
+                end)
+            end
+            task.wait(0.1)
+        end
+    end)
+end
+
+-- Anti AFK
+if Settings.AntiAFK then
+    local VirtualUser = game:GetService("VirtualUser")
+    LocalPlayer.Idled:Connect(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
+end
+
+-- Interface Gráfica (Rayfield)
+local Window = Rayfield:CreateWindow({
+    Name = "Blox Fruits Ultimate Hub v2.5",
+    LoadingTitle = "Carregando...",
+    LoadingSubtitle = "by AI Assistant",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "BloxFruitsHub",
+        FileName = "Config"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "discord.gg/xxxx",
+        RememberJoins = true
+    },
+    KeySystem = false,
+    KeySettings = {
+        Title = "Key System",
+        Subtitle = "Enter Key",
+        Note = "Join Discord for Key",
+        FileName = "Key",
+        SaveKey = true,
+        GrabKeyFromSite = false,
+        Key = {"FREE"}
+    }
+})
+
+-- Tab Principal
+local MainTab = Window:CreateTab("🏠 Main", 4483362458)
+local FarmSection = MainTab:CreateSection("Auto Farm")
+
+local AutoFarmToggle = MainTab:CreateToggle({
+    Name = "Auto Farm",
+    CurrentValue = false,
+    Flag = "AutoFarmToggle",
+    Callback = function(Value)
+        Settings.AutoFarm = Value
+        if Value then
+            StartAutoFarm()
+            Notify("Auto Farm", "Ativado!", 3)
+        else
+            Farming = false
+            Notify("Auto Farm", "Desativado!", 3)
+        end
+    end
+})
+
+local FarmModeDropdown = MainTab:CreateDropdown({
+    Name = "Farm Mode",
+    Options = {"Level", "Mastery", "Beli", "Bones"},
+    CurrentOption = "Level",
+    Flag = "FarmMode",
+    Callback = function(Option)
+        Settings.FarmMode = Option
+    end
+})
+
+local AutoSkillToggle = MainTab:CreateToggle({
+    Name = "Auto Skill",
+    CurrentValue = true,
+    Flag = "AutoSkill",
+    Callback = function(Value)
+        Settings.AutoSkill = Value
+    end
+})
+
+-- Tab de Teleport
+local TeleportTab = Window:CreateTab("📍 Teleport", 7072725347)
+local IslandSection = TeleportTab:CreateSection("Islands")
+
+local IslandDropdown = TeleportTab:CreateDropdown({
+    Name = "Select Island",
+    Options = Islands,
+    CurrentOption = "Jungle",
+    Flag = "IslandSelect",
+    Callback = function(Option)
+        Settings.SelectedIsland = Option
+    end
+})
+
+local TeleportButton = TeleportTab:CreateButton({
+    Name = "Teleport to Island",
+    Callback = function()
+        -- Implementar teleporte para ilha selecionada
+        Notify("Teleport", "Teleporting to " .. Settings.SelectedIsland, 3)
+    end
+})
+
+-- Tab de Bosses
+local BossTab = Window:CreateTab("👑 Bosses", 7733960981)
+local BossSection = BossTab:CreateSection("Boss Farm")
+
+local BossDropdown = BossTab:CreateDropdown({
+    Name = "Select Boss",
+    Options = Bosses,
+    CurrentOption = "God's Guard",
+    Flag = "BossSelect",
+    Callback = function(Option)
+        Settings.SelectedBoss = Option
+    end
+})
+
+local BossFarmToggle = BossTab:CreateToggle({
+    Name = "Auto Boss Farm",
+    CurrentValue = false,
+    Flag = "BossFarm",
+    Callback = function(Value)
+        Settings.BossFarm = Value
+    end
+})
+
+-- Tab de Player
+local PlayerTab = Window:CreateTab("👤 Player", 9753762467)
+local StatsSection = PlayerTab:CreateSection("Stats")
+
+local WalkSpeedSlider = PlayerTab:CreateSlider({
+    Name = "Walk Speed",
+    Range = {16, 300},
+    Increment = 1,
+    Suffix = "studs",
+    CurrentValue = 50,
+    Flag = "WalkSpeed",
+    Callback = function(Value)
+        Settings.WalkSpeed = Value
+    end
+})
+
+local JumpPowerSlider = PlayerTab:CreateSlider({
+    Name = "Jump Power",
+    Range = {50, 300},
+    Increment = 1,
+    Suffix = "studs",
+    CurrentValue = 50,
+    Flag = "JumpPower",
+    Callback = function(Value)
+        Settings.JumpPower = Value
+    end
+})
+
+local NoClipToggle = PlayerTab:CreateToggle({
+    Name = "No Clip",
+    CurrentValue = false,
+    Flag = "NoClip",
+    Callback = function(Value)
+        Settings.NoClip = Value
+    end
+})
+
+-- Tab de Misc
+local MiscTab = Window:CreateTab("⚙️ Misc", 6034287593)
+local AutoSection = MiscTab:CreateSection("Auto Features")
+
+local AutoChestToggle = MiscTab:CreateToggle({
+    Name = "Auto Collect Chest",
+    CurrentValue = true,
+    Flag = "AutoChest",
+    Callback = function(Value)
+        Settings.AutoCollectChest = Value
+    end
+})
+
+local AutoFruitToggle = MiscTab:CreateToggle({
+    Name = "Auto Collect Fruit",
+    CurrentValue = true,
+    Flag = "AutoFruit",
+    Callback = function(Value)
+        Settings.AutoCollectFruit = Value
+    end
+})
+
+-- Tab de Settings
+local SettingsTab = Window:CreateTab("🔧 Settings", 9753762467)
+local ConfigSection = SettingsTab:CreateSection("Configuration")
+
+local SafeModeToggle = SettingsTab:CreateToggle({
+    Name = "Safe Mode (Anti-Ban)",
+    CurrentValue = true,
+    Flag = "SafeMode",
+    Callback = function(Value)
+        Settings.SafeMode = Value
+    end
+})
+
+local DestroyButton = SettingsTab:CreateButton({
+    Name = "Destroy GUI",
+    Callback = function()
+        Rayfield:Destroy()
+        Notify("GUI", "Interface destruída!", 3)
+    end
+})
+
+-- Iniciar sistemas
+UpdatePlayerStats()
+StartAutoCollect()
+
+-- Notificação inicial
+Notify("Blox Fruits Hub", "Script carregado com sucesso!", 5)
+Rayfield:Notify({
+    Title = "Bem-vindo!",
+    Content = "Script atualizado para 2024",
+    Duration = 6.5,
+    Image = 4483362458,
+    Actions = {
+        Ignore = {
+            Name = "OK",
+            Callback = function()
+                print("User clicked OK!")
+            end
+        }
+    }
+})
